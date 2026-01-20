@@ -6,6 +6,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
+  role: number;
   createdAt: Date;
   comparePassword(password: string): Promise<boolean>;
 }
@@ -26,6 +27,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: true,
     },
+    role:{
+      type: Number,
+      default:1,
+    }
   },
   { timestamps: true }
 );

@@ -1,70 +1,73 @@
-import { connectDB } from '@/lib/mongodb';
+import {connectDB} from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
-import { NextRequest, NextResponse } from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 import User from '../../models/User';
 
 export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
+    try {
+        await connectDB();
 
-    const { email, password } = await request.json();
+        const {email, password} = await request.json();
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
-      );
+        if (!email || !password) {
+            return NextResponse.json(
+                {message: 'Email and password are required'},
+                {status: 400}
+            );
+        }
+
+        const user = await User.findOne({email});
+
+        if (!user) {
+            return NextResponse.json(
+                {message: 'Invalid credentials'},
+                {status: 401}
+            );
+        }
+
+        const isPasswordValid = await user.comparePassword(password);
+
+        if (!isPasswordValid) {
+            return NextResponse.json(
+                {message: 'Invalid credentials'},
+                {status: 401}
+            );
+        }
+
+        const token = jwt.sign(
+            {userId: user._id, email: user.email},
+            process.env.JWT_SECRET!,
+            {expiresIn: '7d'}
+        );
+
+        const response = NextResponse.json(
+            {
+                message: 'Sign in successful',
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    token: token
+                },
+            },
+            {status: 200}
+        );
+
+        response.cookies.set('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60,
+        });
+
+        return response;
+    } catch (error) {
+        console.error('Sign in error:', error);
+        return NextResponse.json(
+            {message: 'Internal server error'},
+            {status: 500}
+        );
     }
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
-    const isPasswordValid = await user.comparePassword(password);
-
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    );
-
-    const response = NextResponse.json(
-      {
-        message: 'Sign in successful',
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-        },
-      },
-      { status: 200 }
-    );
-
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-    });
-
-    return response;
-  } catch (error) {
-    console.error('Sign in error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
-  }
 }
