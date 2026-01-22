@@ -2,6 +2,7 @@ import {
   BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
+  DocsIcon,
   GridIcon,
   HorizontaLDots,
   ListIcon,
@@ -26,7 +27,11 @@ export const navItems: NavItem[] = [
     icon: <GridIcon />,
     name: "Dashboard",
      path: "/",
-    // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+  },
+    {
+    icon: <DocsIcon />,
+    name: "Blogs",
+     path: "/blogs",
   },
   // {
   //   icon: <CalenderIcon />,
@@ -89,3 +94,23 @@ export const othersItems: NavItem[] = [
   //   ],
   // },
 ];
+
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+
+export const formatDate = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  return dateObj.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};

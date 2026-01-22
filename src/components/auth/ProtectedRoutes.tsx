@@ -25,20 +25,19 @@ export function ProtectedRoutes({
     }
   }, [isAuthenticated, isLoading, user,  router]);
 
-  // ⛔ Block rendering until auth is resolved
-//   if (isLoading) {
-//     return (
-//       <div className="flex items-center justify-center min-h-screen">
-//         Loading...
-//       </div>
-//     );
-//   }
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   // ⛔ Do NOT render layout for unauth users
-//   if (!isAuthenticated) return null;
+  if (!isAuthenticated) return null;
 
   // ⛔ Role mismatch
-//   if (requiredRole && user?.role !== requiredRole) return null;
+  if (user?.role !== 1) return null;
 
   // ✅ Render protected content
   return <>{children}</>;

@@ -14,3 +14,20 @@ declare global {
   path?: string;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
+
+
+ type BlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  content: string; // CKEditor HTML
+  excerpt: string;
+  featuredImage?: string;
+  status: "draft" | "published";
+  publishedAt?: string;
+  seo: {
+    metaTitle: string;
+    metaDescription: string;
+    noIndex?: boolean;
+  };
+};

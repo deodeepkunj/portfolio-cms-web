@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^11.0.1",
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",
     "@fullcalendar/interaction": "^6.1.19",
@@ -24,6 +25,7 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.3.1",
     "flatpickr": "^4.6.13",
+    "jodit-react": "^5.2.38",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.0.0",
     "next": "16.0.10",

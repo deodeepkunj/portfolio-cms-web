@@ -23,6 +23,7 @@ export function proxy(request: NextRequest) {
         pathname.startsWith('/calendar') ||
         pathname.startsWith('/profile') ||
         pathname.startsWith('/ecommerce');
+        pathname.startsWith('/blogs');
     
     // 🔐 Block unauthenticated users
     if (isProtectedRoute && !token) {
