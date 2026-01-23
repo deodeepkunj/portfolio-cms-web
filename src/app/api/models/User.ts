@@ -24,6 +24,7 @@ export interface IUser extends Document {
         taxId?: string;
     };
     createdAt: Date;
+    updatedAt: Date;
 
     comparePassword(password: string): Promise<boolean>;
 }
