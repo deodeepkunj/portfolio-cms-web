@@ -24,6 +24,7 @@ export function proxy(request: NextRequest) {
         pathname.startsWith('/profile') ||
         pathname.startsWith('/ecommerce') ||
         pathname.startsWith('/blogs') ||
+        pathname.startsWith('/about') ||
         pathname.startsWith('/banner');
 
     // 🔐 Block unauthenticated users
