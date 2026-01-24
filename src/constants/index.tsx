@@ -31,8 +31,8 @@ export const navItems: NavItem[] = [
     },
     {
         icon: <DocsIcon/>,
-        name: "Services",
-        path: "/services"
+        name: "Featured Projects",
+        path: "/projects"
     }
     // {
     //   icon: <CalenderIcon />,
