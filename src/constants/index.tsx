@@ -33,7 +33,13 @@ export const navItems: NavItem[] = [
         icon: <DocsIcon/>,
         name: "Featured Projects",
         path: "/projects"
-    }
+    },
+    {
+        icon: <DocsIcon/>,
+        name: "Tech stack",
+        path: "/techstack"
+    },
+
     // {
     //   icon: <CalenderIcon />,
     //   name: "Calendar",

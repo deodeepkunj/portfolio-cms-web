@@ -7,6 +7,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import {toast} from "react-hot-toast";
 import {v4 as uuidv4} from "uuid";
+import TextArea from "@/components/form/input/TextArea";
 
 // --- Types ---
 type ProjectItem = {
@@ -261,12 +262,12 @@ function ProjectItemEditor({project, onUpdate, onDelete}: {
 
                     <div className="space-y-2">
                         <Label className="text-xs">Description</Label>
-                        <textarea
+                        <TextArea
                             className="w-full text-sm border border-gray-300 rounded-lg p-3 dark:bg-gray-900 dark:border-gray-700 focus:ring-2 focus:ring-brand-500 outline-none"
                             rows={2}
                             placeholder="Briefly describe the project and solutions..."
                             value={project.description}
-                            onChange={(e) => onUpdate("description", e.target.value)}
+                            onChange={(e: any) => onUpdate("description", e.target.value)}
                         />
                     </div>
 
