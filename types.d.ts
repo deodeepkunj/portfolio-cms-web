@@ -31,6 +31,21 @@ type BlogPost = {
     };
 };
 
+interface Blog {
+    _id: string;
+    title: string;
+    slug: string;
+    excerpt: string;
+    status: "draft" | "published";
+    featuredImage?: string;
+    createdAt: string;
+    updatedAt: string;
+    seo: {
+        metaTitle: string;
+        metaDescription: string;
+    };
+}
+
 type BannerForm = {
     badge: string;
     headlineLine1: string;
