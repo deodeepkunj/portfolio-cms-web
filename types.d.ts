@@ -61,3 +61,20 @@ type BannerForm = {
     featuredTitle: string;
     featuredDescription: string;
 };
+type TechTool = {
+    id: string;
+    name: string;
+    description: string;
+    imageUrl: string;
+    order: number;
+};
+
+type TechStackData = {
+    status: "draft" | "published";
+    header: {
+        badge: string;
+        title: string;
+        subtitle: string;
+    };
+    tools: TechTool[];
+};

@@ -12,7 +12,8 @@ const TechStackSchema = new Schema({
         id: {type: String, required: true},
         name: {type: String, required: true}, // e.g., "Containerization platform"
         imageUrl: {type: String},
-        order: {type: Number, default: 0}
+        order: {type: Number, default: 0},
+        description: { type: String, default: "" },
     }]
 }, {timestamps: true});
 

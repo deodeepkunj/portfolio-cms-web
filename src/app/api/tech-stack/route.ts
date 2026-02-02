@@ -1,7 +1,8 @@
 import {NextRequest, NextResponse} from "next/server";
 import {connectDB} from "@/lib/mongodb";
 import {getUserFromToken} from "@/lib/auth";
-import TechStack from "@/app/api/models/TechStack";
+import TechStack from "../models/TechStack";
+
 
 // --- API Handlers ---
 export async function GET(req: NextRequest) {
