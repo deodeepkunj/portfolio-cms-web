@@ -17,6 +17,7 @@ type ProjectItem = {
     imageUrl: string;
     technologies: string[];
     order: number;
+    projectUrl: string
 };
 
 type ProjectsData = {
@@ -66,24 +67,30 @@ export default function FeaturedProjectsCard() {
         fetchProjects();
     }, []);
 
-    const handleSave = async () => {
-        try {
-            setLoading(true);
-            const res = await fetch("/api/projects", {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(formData),
-            });
+   const handleSave = async () => {
+  try {
+    setLoading(true);
 
-            if (!res.ok) throw new Error();
-            toast.success("Projects updated successfully");
-            setIsEditing(false);
-        } catch (err) {
-            toast.error("Failed to save changes");
-        } finally {
-            setLoading(false);
-        }
-    };
+    // ensure latest state is used
+    await new Promise((r) => setTimeout(r, 0));
+
+    console.log("Saving payload:", formData.items);
+
+    const res = await fetch("/api/projects", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    if (!res.ok) throw new Error();
+    toast.success("Projects updated successfully");
+    setIsEditing(false);
+  } catch {
+    toast.error("Failed to save changes");
+  } finally {
+    setLoading(false);
+  }
+};
 
     const updateItem = (id: string, field: keyof ProjectItem, value: any) => {
         setFormData((prev) => ({
@@ -167,6 +174,7 @@ export default function FeaturedProjectsCard() {
                                     description: "",
                                     imageUrl: "",
                                     technologies: [],
+                                    projectUrl:"",
                                     order: formData.items.length
                                 }]
                             })}
@@ -213,132 +221,136 @@ export default function FeaturedProjectsCard() {
 }
 
 /* --- Project Item Editor Component --- */
-function ProjectItemEditor({project, onUpdate, onDelete}: {
-    project: ProjectItem;
-    onUpdate: (f: keyof ProjectItem, v: any) => void;
-    onDelete: () => void
+/* --- Project Item Editor Component --- */
+function ProjectItemEditor({
+  project,
+  onUpdate,
+  onDelete,
+}: {
+  project: ProjectItem;
+  onUpdate: (f: keyof ProjectItem, v: any) => void;
+  onDelete: () => void;
 }) {
-    const [tagInput, setTagInput] = useState("");    
-    const [uploading, setUploading] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const [uploading, setUploading] = useState(false);
 
- const { getRootProps, getInputProps } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     accept: { "image/*": [] },
     multiple: false,
     onDrop: async (files) => {
-        if (!files[0]) return;
+      if (!files[0]) return;
 
-        try {
-            setUploading(true);
-            const uploadedUrl = await uploadImage(files[0]);
-            onUpdate("imageUrl", uploadedUrl);
-            toast.success("Image uploaded");
-        } catch (err) {
-            toast.error("Image upload failed");
-        }finally{
-             setUploading(true);
-        }
+      try {
+        setUploading(true);
+        const uploadedUrl = await uploadImage(files[0]);
+        onUpdate("imageUrl", uploadedUrl);
+        toast.success("Image uploaded");
+      } catch {
+        toast.error("Image upload failed");
+      } finally {
+        setUploading(false); // ✅ FIX
+      }
+    },
+  });
+
+  const handleAddTag = () => {
+    const value = tagInput.trim();
+    if (value && !project.technologies.includes(value)) {
+      onUpdate("technologies", [...project.technologies, value]);
+      setTagInput("");
     }
-});
+  };
 
-    const handleAddTag = () => {
-        const value = tagInput.trim();
-        if (value && !project.technologies.includes(value)) {
-            onUpdate("technologies", [...project.technologies, value]);
-            setTagInput("");
-        }
-    };
+  return (
+    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 shadow-sm">
+      {/* header */}
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-brand-500">
+          Project Config
+        </span>
+        <button onClick={onDelete} className="text-red-500 text-xs font-medium">
+          Remove
+        </button>
+      </div>
 
-    return (
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-brand-500">Project Config</span>
-                <button type="button" onClick={onDelete}
-                        className="text-red-500 text-xs hover:text-red-700 font-medium">
-                    Remove
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left: Image Upload */}
-                <div {...getRootProps()}
-                     className="border-2 border-dashed rounded-xl h-40 flex items-center justify-center cursor-pointer overflow-hidden bg-gray-50 dark:bg-gray-800 hover:border-brand-500 transition-all">
-                    <input {...getInputProps()} />
-                    {project.imageUrl ? (
-                        <img src={project.imageUrl} className="h-full w-full object-cover" alt="Preview"/>
-                    ) : (
-                        <div className="text-center p-4">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold">Drop Image Here</p>
-                        </div>
-                    )}
-                </div>
-                {uploading && <p className="text-xs text-gray-400">Uploading...</p>}
-
-                {/* Right: Text Content */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs">Project Title</Label>
-                            <Input value={project.title} onChange={(e) => onUpdate("title", e.target.value)}
-                                   placeholder="e.g. E-Commerce Platform"/>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs">Display Order</Label>
-                            <Input type="number" value={project.order.toString()}
-                                   onChange={(e) => onUpdate("order", parseInt(e.target.value) || 0)}/>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs">Description</Label>
-                        <TextArea
-                            className="w-full text-sm border border-gray-300 rounded-lg p-3 dark:bg-gray-900 dark:border-gray-700 focus:ring-2 focus:ring-brand-500 outline-none"
-                            rows={2}
-                            placeholder="Briefly describe the project and solutions..."
-                            value={project.description}
-                            onChange={(e: any) => onUpdate("description", e.target.value)}
-                        />
-                    </div>
-
-                    {/* FIXED Technology Tag Input */}
-                    <div className="space-y-2">
-                        <Label className="text-xs">Technologies (Press Enter to add)</Label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {project.technologies.map((t, i) => (
-                                <span key={i}
-                                      className="bg-brand-50 dark:bg-brand-500/10 text-brand-600 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
-                                    {t}
-                                    <button type="button"
-                                            onClick={() => onUpdate("technologies", project.technologies.filter(tag => tag !== t))}
-                                            className="hover:text-red-500 font-bold ml-1">×</button>
-                                </span>
-                            ))}
-                        </div>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-800 dark:border-gray-700"
-                                placeholder="e.g. React Native"
-                                value={tagInput}
-                                onChange={(e) => setTagInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleAddTag();
-                                    }
-                                }}
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddTag}
-                                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm hover:bg-gray-200"
-                            >
-                                +
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Image */}
+        <div
+          {...getRootProps()}
+          className="border-2 border-dashed rounded-xl h-40 flex items-center justify-center cursor-pointer overflow-hidden bg-gray-50 dark:bg-gray-800"
+        >
+          <input {...getInputProps()} />
+          {project.imageUrl ? (
+            <img src={project.imageUrl} className="h-full w-full object-cover" />
+          ) : (
+            <p className="text-[10px] text-gray-400 uppercase font-bold">
+              Drop Image Here
+            </p>
+          )}
         </div>
-    );
+
+        {uploading && <p className="text-xs text-gray-400">Uploading…</p>}
+
+        {/* Content */}
+        <div className="lg:col-span-2 space-y-4">
+          <Input
+            placeholder="Project Title"
+            value={project.title}
+            onChange={(e) => onUpdate("title", e.target.value)}
+          />
+
+          <Input
+            type="number"
+            placeholder="Order"
+            value={project.order}
+            onChange={(e) => onUpdate("order", Number(e.target.value))}
+          />
+
+          <TextArea
+            rows={2}
+            placeholder="Project description"
+            value={project.description}
+            onChange={(e: any) =>
+              onUpdate("description", e.target.value)
+            }
+          />
+
+        <Input
+            placeholder="Project URL"
+            value={project.projectUrl}
+            onChange={(e) => onUpdate("projectUrl", e.target.value)}
+        />
+
+          {/* Tags */}
+          <div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {project.technologies.map((t) => (
+                <span key={t} className="text-[10px] px-2 py-1 rounded bg-brand-50">
+                  {t}
+                  <button
+                    onClick={() =>
+                      onUpdate(
+                        "technologies",
+                        project.technologies.filter((x) => x !== t)
+                      )
+                    }
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            <input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+              placeholder="Add technology"
+              className="border px-3 py-2 rounded w-full"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

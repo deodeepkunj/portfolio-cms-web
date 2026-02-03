@@ -7,6 +7,7 @@ const ProjectItemSchema = new Schema({
     imageUrl: {type: String},
     technologies: [{type: String}], // e.g., ["Next.js", "Node.js"]
     order: {type: Number, default: 0},
+    projectUrl: {type: String, default: ""}
 });
 
 const ProjectsSchema = new Schema(
