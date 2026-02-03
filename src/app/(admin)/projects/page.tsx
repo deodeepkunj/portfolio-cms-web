@@ -218,7 +218,8 @@ function ProjectItemEditor({project, onUpdate, onDelete}: {
     onUpdate: (f: keyof ProjectItem, v: any) => void;
     onDelete: () => void
 }) {
-    const [tagInput, setTagInput] = useState("");
+    const [tagInput, setTagInput] = useState("");    
+    const [uploading, setUploading] = useState(false);
 
  const { getRootProps, getInputProps } = useDropzone({
     accept: { "image/*": [] },
@@ -227,11 +228,14 @@ function ProjectItemEditor({project, onUpdate, onDelete}: {
         if (!files[0]) return;
 
         try {
+            setUploading(true);
             const uploadedUrl = await uploadImage(files[0]);
             onUpdate("imageUrl", uploadedUrl);
             toast.success("Image uploaded");
         } catch (err) {
             toast.error("Image upload failed");
+        }finally{
+             setUploading(true);
         }
     }
 });
@@ -267,6 +271,7 @@ function ProjectItemEditor({project, onUpdate, onDelete}: {
                         </div>
                     )}
                 </div>
+                {uploading && <p className="text-xs text-gray-400">Uploading...</p>}
 
                 {/* Right: Text Content */}
                 <div className="lg:col-span-2 space-y-4">
