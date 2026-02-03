@@ -5,25 +5,21 @@ import {getUserFromToken} from "@/lib/auth";
 import {ProjectsSchema} from "@/lib/validators/projects.schema";
 import Projects from "@/app/api/models/Projects";
 
-/* ================= GET ================= */
 export async function GET(req: NextRequest) {
     await connectDB();
     const {searchParams} = new URL(req.url);
     const mode = searchParams.get("mode");
 
-    // Return everything for CMS, only published for frontend
     const query = mode === "cms" ? {} : {status: "published"};
     const data = await Projects.findOne(query).lean();
 
     return NextResponse.json(data ?? {items: []});
 }
 
-/* ================= PATCH (Create or Update) ================= */
 export async function PATCH(req: NextRequest) {
     try {
         await connectDB();
 
-        // 1. Authentication Guard
         const user = await getUserFromToken(req);
         if (!user) {
             return NextResponse.json({message: "Unauthenticated"}, {status: 401});
@@ -31,7 +27,6 @@ export async function PATCH(req: NextRequest) {
 
         const body = await req.json();
 
-        // 2. Validate Body
         const parsed = ProjectsSchema.safeParse(body);
         if (!parsed.success) {
             return NextResponse.json(
@@ -40,9 +35,8 @@ export async function PATCH(req: NextRequest) {
             );
         }
 
-        // 3. Upsert Logic: Since there is typically only one "Featured Projects" section
         const updatedData = await Projects.findOneAndUpdate(
-            {}, // Empty filter to find the singleton document
+            {}, 
             {$set: parsed.data},
             {upsert: true, new: true, runValidators: true}
         ).lean();

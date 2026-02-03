@@ -4,7 +4,6 @@ import {getUserFromToken} from "@/lib/auth";
 import TechStack from "../models/TechStack";
 
 
-// --- API Handlers ---
 export async function GET(req: NextRequest) {
     await connectDB();
     const {searchParams} = new URL(req.url);

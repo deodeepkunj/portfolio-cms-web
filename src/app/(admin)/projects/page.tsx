@@ -25,6 +25,24 @@ type ProjectsData = {
     items: ProjectItem[];
 };
 
+
+async function uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Upload failed");
+    }
+
+    const data = await res.json();
+    return data.url;
+}
 export default function FeaturedProjectsCard() {
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -202,16 +220,21 @@ function ProjectItemEditor({project, onUpdate, onDelete}: {
 }) {
     const [tagInput, setTagInput] = useState("");
 
-    const {getRootProps, getInputProps} = useDropzone({
-        accept: {"image/*": []},
-        multiple: false,
-        onDrop: (files) => {
-            if (files[0]) {
-                const url = URL.createObjectURL(files[0]);
-                onUpdate("imageUrl", url);
-            }
+ const { getRootProps, getInputProps } = useDropzone({
+    accept: { "image/*": [] },
+    multiple: false,
+    onDrop: async (files) => {
+        if (!files[0]) return;
+
+        try {
+            const uploadedUrl = await uploadImage(files[0]);
+            onUpdate("imageUrl", uploadedUrl);
+            toast.success("Image uploaded");
+        } catch (err) {
+            toast.error("Image upload failed");
         }
-    });
+    }
+});
 
     const handleAddTag = () => {
         const value = tagInput.trim();
