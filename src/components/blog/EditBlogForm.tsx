@@ -2,6 +2,7 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useDropzone } from "react-dropzone";
 import BlogEditor from "@/components/blog/BlogEditor";
 import ComponentCard from "@/components/common/ComponentCard";
 import Button from "@/components/ui/button/Button";
@@ -20,6 +21,8 @@ interface Blog {
   content: string;
   excerpt: string;
   status: BlogStatus;
+  bannerImage?: string;
+  categories?: string[];
   seo: {
     metaTitle: string;
     metaDescription: string;
@@ -30,10 +33,29 @@ type Props = {
   blogId: string;
 };
 
+/* ---------------- IMAGE UPLOAD API ---------------- */
+async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Upload failed");
+  }
+
+  const data = await res.json();
+  return data.url;
+}
+
 export default function EditBlogForm({ blogId }: Props) {
   const router = useRouter();
   const { loading, error, getBlogById, updateBlog, deleteBlog } = useBlogApi();
-  
+
   const [initialLoading, setInitialLoading] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -46,8 +68,14 @@ export default function EditBlogForm({ blogId }: Props) {
   const [content, setContent] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [status, setStatus] = useState<BlogStatus>("draft");
+
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+
+  /* NEW */
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [categoriesInput, setCategoriesInput] = useState("");
 
   useEffect(() => {
     fetchBlog();
@@ -57,6 +85,8 @@ export default function EditBlogForm({ blogId }: Props) {
     try {
       setInitialLoading(true);
       const blog: Blog = await getBlogById(blogId);
+      console.log(blog)
+
       setTitle(blog.title);
       setSlug(blog.slug);
       setContent(blog.content);
@@ -64,6 +94,9 @@ export default function EditBlogForm({ blogId }: Props) {
       setStatus(blog.status);
       setMetaTitle(blog.seo.metaTitle);
       setMetaDescription(blog.seo.metaDescription);
+
+      setBannerUrl(blog.bannerImage || null);
+      setCategoriesInput(blog.categories?.join(", ") || "");
     } catch (err) {
       console.error("Error fetching blog:", err);
     } finally {
@@ -71,9 +104,33 @@ export default function EditBlogForm({ blogId }: Props) {
     }
   };
 
+  /* ---------------- DROPZONE ---------------- */
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { "image/*": [] },
+    multiple: false,
+    onDrop: async (files) => {
+      if (!files.length) return;
+
+      try {
+        setUploadingImage(true);
+        const url = await uploadImage(files[0]);
+        setBannerUrl(url);
+      } catch (err) {
+        console.error("Banner upload failed:", err);
+      } finally {
+        setUploadingImage(false);
+      }
+    },
+  });
+
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
     setSuccess(false);
+
+    const categories = categoriesInput
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
 
     const payload = {
       title,
@@ -81,6 +138,8 @@ export default function EditBlogForm({ blogId }: Props) {
       content,
       excerpt,
       status,
+      bannerImage: bannerUrl,
+      categories,
       seo: {
         metaTitle,
         metaDescription,
@@ -91,8 +150,6 @@ export default function EditBlogForm({ blogId }: Props) {
       setUpdateLoading(true);
       await updateBlog(blogId, payload);
       setSuccess(true);
-
-      // Auto-clear success message
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error("Error updating blog:", err);
@@ -101,24 +158,12 @@ export default function EditBlogForm({ blogId }: Props) {
     }
   };
 
-  const openDeleteModal = () => {
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-  };
-
   const handleDelete = async () => {
     try {
       setDeleteLoading(true);
       await deleteBlog(blogId);
       setDeleteSuccess(true);
-
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        router.push("/admin/blogs");
-      }, 2000);
+      setTimeout(() => router.push("/admin/blogs"), 2000);
     } catch (err) {
       console.error("Error deleting blog:", err);
     } finally {
@@ -130,7 +175,7 @@ export default function EditBlogForm({ blogId }: Props) {
     return (
       <ComponentCard title="Edit Blog">
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500 dark:text-gray-400">Loading blog...</p>
+          <p className="text-gray-500">Loading blog...</p>
         </div>
       </ComponentCard>
     );
@@ -140,26 +185,19 @@ export default function EditBlogForm({ blogId }: Props) {
     <ComponentCard title="Edit Blog">
       <form onSubmit={handleUpdate}>
         <div className="grid grid-cols-12 gap-8">
-          {/* LEFT COLUMN */}
+          {/* LEFT */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
-            {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <div className="p-4 bg-red-50 border rounded-md">
+                <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
-            {/* Success Message */}
             {success && (
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-                <p className="text-sm text-green-800 dark:text-green-200">✓ Blog updated successfully!</p>
-              </div>
-            )}
-
-            {/* Delete Success Message */}
-            {deleteSuccess && (
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-                <p className="text-sm text-green-800 dark:text-green-200">✓ Blog deleted successfully! Redirecting...</p>
+              <div className="p-4 bg-green-50 border rounded-md">
+                <p className="text-sm text-green-800">
+                  ✓ Blog updated successfully!
+                </p>
               </div>
             )}
 
@@ -167,8 +205,6 @@ export default function EditBlogForm({ blogId }: Props) {
             <div>
               <Label>Blog Title</Label>
               <Input
-                type="text"
-                placeholder="Enter blog title"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -180,144 +216,128 @@ export default function EditBlogForm({ blogId }: Props) {
             {/* Slug */}
             <div>
               <Label>Slug</Label>
-              <Input
-                type="text"
-                placeholder="blog-title-slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                URL Preview: <span className="font-medium">/blog/{slug || "your-slug"}</span>
-              </p>
+              <Input value={slug} onChange={(e) => setSlug(e.target.value)} />
+            </div>
+
+            {/* Banner Image */}
+            <div>
+              <Label>Banner Image</Label>
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer ${
+                  isDragActive ? "border-indigo-500" : "border-gray-300"
+                }`}
+              >
+                <input {...getInputProps()} />
+                {uploadingImage
+                  ? "Uploading image..."
+                  : "Drag & drop or click to upload"}
+              </div>
+
+              {bannerUrl && (
+                <img
+                  src={bannerUrl}
+                  alt="Banner"
+                  className="mt-3 rounded-md border max-h-48 object-cover"
+                />
+              )}
             </div>
 
             {/* Content */}
             <div>
               <Label>Content</Label>
-              <div className="border rounded-md bg-white dark:bg-gray-900">
-                <BlogEditor value={content} onChange={setContent} />
-              </div>
+              <BlogEditor value={content} onChange={setContent} />
             </div>
 
             {/* Excerpt */}
             <div>
               <Label>Excerpt</Label>
               <Input
-                type="text"
-                placeholder="Short summary for blog listing and SEO"
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
               />
             </div>
           </div>
 
-          {/* RIGHT COLUMN - SETTINGS */}
-          <div className="col-span-12 lg:col-span-4 space-y-6 lg:sticky lg:top-6 h-fit">
-            {/* SEO CARD */}
-            <div className="border rounded-md p-5 bg-gray-50 dark:bg-gray-900">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                SEO Settings
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <Label>Meta Title</Label>
-                  <Input
-                    type="text"
-                    placeholder="SEO title (60 chars)"
-                    value={metaTitle}
-                    onChange={(e) => setMetaTitle(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label>Meta Description</Label>
-                  <Input
-                    type="text"
-                    placeholder="SEO description (160 chars)"
-                    value={metaDescription}
-                    onChange={(e) => setMetaDescription(e.target.value)}
-                  />
-                </div>
-              </div>
+          {/* RIGHT */}
+          <div className="col-span-12 lg:col-span-4 space-y-6">
+            {/* Categories */}
+            <div className="border rounded-md p-5 bg-gray-50">
+              <Label>Categories</Label>
+              <Input
+                placeholder="React, Next.js, Performance"
+                value={categoriesInput}
+                onChange={(e) => setCategoriesInput(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Comma separated
+              </p>
             </div>
 
-            {/* PUBLISH CARD */}
-            <div className="border rounded-md p-5 bg-white dark:bg-gray-900">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                Publish
-              </h3>
+            {/* SEO */}
+            <div className="border rounded-md p-5 bg-gray-50">
+              <Label>Meta Title</Label>
+              <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} />
+              <Label className="mt-4">Meta Description</Label>
+              <Input
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+              />
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label>Status</Label>
-                  <select
-                    className="w-full border border-gray-200 dark:border-white/[0.05] rounded px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as BlogStatus)
-                    }
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                  </select>
-                </div>
+            {/* Publish */}
+            <div className="border rounded-md p-5 bg-white">
+              <Label>Status</Label>
+              <select
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as BlogStatus)}
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
 
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="w-full"
-                  disabled={updateLoading}
-                >
-                  {updateLoading ? "Updating..." : "Update Blog"}
-                </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="w-full mt-4"
+                disabled={updateLoading || uploadingImage}
+              >
+                {updateLoading ? "Updating..." : "Update Blog"}
+              </Button>
 
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={openDeleteModal}
-                  disabled={deleteLoading}
-                >
-                  Delete Blog
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-2 text-red-600"
+                onClick={() => setIsDeleteModalOpen(true)}
+                disabled={deleteLoading}
+              >
+                Delete Blog
+              </Button>
             </div>
           </div>
         </div>
       </form>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        showCloseButton={true}
-        className="max-w-[500px] m-4"
-      >
-        <div className="p-6 sm:p-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Delete Blog
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Are you sure you want to delete <span className="font-semibold">"{title}"</span>? This action cannot be undone.
+      {/* DELETE MODAL */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-2">Delete Blog</h2>
+          <p className="mb-6">
+            Are you sure you want to delete <b>{title}</b>?
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={closeDeleteModal}
-              className="order-2 sm:order-1"
-              disabled={deleteLoading}
-            >
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleDelete}
+              className="bg-red-600 text-white"
               disabled={deleteLoading}
-              className="order-1 sm:order-2 bg-red-600 hover:bg-red-700 text-white"
             >
-              {deleteLoading ? "Deleting..." : "Delete Blog"}
+              {deleteLoading ? "Deleting..." : "Delete"}
             </Button>
           </div>
         </div>

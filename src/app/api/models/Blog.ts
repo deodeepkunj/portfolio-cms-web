@@ -1,12 +1,13 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IBlog extends Document {
   title: string;
   slug: string;
   content: string;
   excerpt: string;
-  featuredImage?: string;
-  status: 'draft' | 'published';
+  bannerImage?: string;
+  categories: string[];
+  status: "draft" | "published";
   publishedAt?: Date;
   seo: {
     metaTitle: string;
@@ -38,25 +39,48 @@ const blogSchema = new Schema<IBlog>(
       type: String,
       required: true,
     },
-    featuredImage: {
+    bannerImage: {
       type: String,
-      default: null,
+      default: "",
     },
+
+    /* ✅ NEW */
+    categories: {
+      type: [String],
+      default: [],
+      index: true,
+    },
+
     status: {
       type: String,
-      enum: ['draft', 'published'],
-      default: 'draft',
+      enum: ["draft", "published"],
+      default: "draft",
     },
     publishedAt: {
       type: Date,
       default: null,
     },
     seo: {
-      metaTitle: String,
-      metaDescription: String,
+      metaTitle: {
+        type: String,
+        trim: true,
+      },
+      metaDescription: {
+        type: String,
+        trim: true,
+      },
     },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Blog || mongoose.model<IBlog>('Blog', blogSchema);
+/* Optional but recommended */
+blogSchema.pre("save", function (next) {
+  if (this.isModified("status") && this.status === "published" && !this.publishedAt) {
+    this.publishedAt = new Date();
+  }
+  next();
+});
+
+export default mongoose.models.Blog ||
+  mongoose.model<IBlog>("Blog", blogSchema);

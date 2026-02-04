@@ -186,7 +186,7 @@ export default function BlogListingTable() {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => handleEdit(blog._id)}
+                                                        onClick={() => handleEdit(blog.slug)}
                                                         className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                                     >
                                                         Edit
