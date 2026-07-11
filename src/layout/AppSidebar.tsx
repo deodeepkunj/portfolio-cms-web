@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {navItems, othersItems} from "../constants/index"
 
-import SidebarWidget from "./SidebarWidget";
 import { NavItem } from "../../types";
 import { ChevronDownIcon, HorizontaLDots } from "@/icons";
 
@@ -20,7 +19,7 @@ const AppSidebar: React.FC = () => {
     navItems: NavItem[],
     menuType: "main" | "others"
   ) => (
-    <ul className="flex flex-col gap-4">
+    <ul className="flex flex-col gap-1">
       {navItems.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
@@ -63,10 +62,22 @@ const AppSidebar: React.FC = () => {
             nav.path && (
               <Link
                 href={nav.path}
+                title={
+                  !isExpanded && !isHovered && !isMobileOpen
+                    ? nav.name
+                    : undefined
+                }
                 className={`menu-item group ${
                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
+                } ${
+                  !isExpanded && !isHovered
+                    ? "lg:justify-center"
+                    : "lg:justify-start"
                 }`}
               >
+                {isActive(nav.path) && (
+                  <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-500 dark:bg-brand-400" />
+                )}
                 <span
                   className={`${
                     isActive(nav.path)
@@ -222,7 +233,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex  ${
+        className={`py-7 mb-4 flex border-b border-gray-100 dark:border-gray-800 ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
@@ -259,9 +270,9 @@ const AppSidebar: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div>
               <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                className={`mb-3 flex px-3 text-[11px] font-semibold uppercase leading-[20px] tracking-widest text-gray-400 dark:text-gray-500 ${
                   !isExpanded && !isHovered
-                    ? "lg:justify-center"
+                    ? "lg:justify-center lg:px-0"
                     : "justify-start"
                 }`}
               >

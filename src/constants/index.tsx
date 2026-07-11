@@ -1,4 +1,15 @@
-import {DocsIcon, GridIcon,} from "../icons";
+import {
+    BoltIcon,
+    BoxCubeIcon,
+    BriefcaseIcon,
+    ChatIcon,
+    DocsIcon,
+    GraduationCapIcon,
+    GridIcon,
+    ImageIcon,
+    ShootingStarIcon,
+    UserCircleIcon,
+} from "../icons";
 
 type NavItem = {
     name: string;
@@ -20,42 +31,42 @@ export const navItems: NavItem[] = [
         path: "/blogs",
     },
     {
-        icon: <DocsIcon/>,
+        icon: <ImageIcon/>,
         name: "Banner",
         path: "/banner"
     },
     {
-        icon: <DocsIcon/>,
+        icon: <UserCircleIcon/>,
         name: "About Us",
         path: "/about"
     },
     {
-        icon: <DocsIcon/>,
+        icon: <BriefcaseIcon/>,
         name: "Experience",
         path: "/experience"
     },
     {
-        icon: <DocsIcon/>,
+        icon: <GraduationCapIcon/>,
         name: "Education",
         path: "/education"
     },
-        {
-        icon: <DocsIcon/>,
+    {
+        icon: <BoltIcon/>,
         name: "Services",
         path: "/services"
     },
     {
-        icon: <DocsIcon/>,
+        icon: <ShootingStarIcon/>,
         name: "Featured Projects",
         path: "/projects"
     },
     {
-        icon: <DocsIcon/>,
+        icon: <BoxCubeIcon/>,
         name: "Tech stack",
         path: "/techstack"
     },
-        {
-        icon: <DocsIcon/>,
+    {
+        icon: <ChatIcon/>,
         name: "Recommendations",
         path: "/recommendations"
     },
