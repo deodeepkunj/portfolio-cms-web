@@ -34,7 +34,7 @@ export default function EditRecommendationPage() {
         initialData={data}
         onSubmit={async (payload) => {
           await update(id, payload);
-          router.push("/admin/recommendations");
+          router.push("/recommendations");
         }}
       />
 
@@ -43,7 +43,7 @@ export default function EditRecommendationPage() {
         className="mt-6 text-red-600"
         onClick={async () => {
           await remove(id);
-          router.push("/admin/recommendations");
+          router.push("/recommendations");
         }}
       >
         Delete Recommendation

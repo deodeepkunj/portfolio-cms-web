@@ -163,7 +163,7 @@ export default function EditBlogForm({ blogId }: Props) {
       setDeleteLoading(true);
       await deleteBlog(blogId);
       setDeleteSuccess(true);
-      setTimeout(() => router.push("/admin/blogs"), 2000);
+      setTimeout(() => router.push("/blogs"), 2000);
     } catch (err) {
       console.error("Error deleting blog:", err);
     } finally {

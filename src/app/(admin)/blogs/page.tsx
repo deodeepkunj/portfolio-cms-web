@@ -149,7 +149,7 @@ export default function BlogListPage() {
                     <p className="text-gray-500 dark:text-gray-400 mb-4">
                         No blogs found
                     </p>
-                    <Link href="/admin/blogs/create">
+                    <Link href="/blogs/new">
                         <Button>Create Your First Blog</Button>
                     </Link>
                 </div>

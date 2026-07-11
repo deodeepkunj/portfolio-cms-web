@@ -17,7 +17,7 @@ export default function BlogListingTable() {
     const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
     const [deleteSuccess, setDeleteSuccess] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
+    const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null);
     const [selectedBlogTitle, setSelectedBlogTitle] = useState<string>("");
 
     useEffect(() => {
@@ -33,24 +33,24 @@ export default function BlogListingTable() {
         }
     };
 
-    const openDeleteModal = (id: string, title: string) => {
-        setSelectedBlogId(id);
+    const openDeleteModal = (slug: string, title: string) => {
+        setSelectedBlogSlug(slug);
         setSelectedBlogTitle(title);
         setIsDeleteModalOpen(true);
     };
 
     const closeDeleteModal = () => {
         setIsDeleteModalOpen(false);
-        setSelectedBlogId(null);
+        setSelectedBlogSlug(null);
         setSelectedBlogTitle("");
     };
 
     const handleDelete = async () => {
-        if (!selectedBlogId) return;
+        if (!selectedBlogSlug) return;
 
-        setDeleteLoading(selectedBlogId);
+        setDeleteLoading(selectedBlogSlug);
         try {
-            await deleteBlog(selectedBlogId);
+            await deleteBlog(selectedBlogSlug);
             setDeleteSuccess(true);
             closeDeleteModal();
             fetchBlogs();
@@ -194,7 +194,7 @@ export default function BlogListingTable() {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => openDeleteModal(blog._id, blog.title)}
+                                                        onClick={() => openDeleteModal(blog.slug, blog.title)}
                                                         className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                                                     >
                                                         Delete

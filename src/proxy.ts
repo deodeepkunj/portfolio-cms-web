@@ -16,47 +16,40 @@ export function proxy(request: NextRequest) {
         pathname === route || pathname.startsWith(route + '/')
     );
 
-    const isProtectedRoute =
-        pathname.startsWith('/dashboard') ||
-        pathname.startsWith('/ui-elements') ||
-        pathname.startsWith('/others-pages') ||
-        pathname.startsWith('/calendar') ||
-        pathname.startsWith('/profile') ||
-        pathname.startsWith('/ecommerce') ||
-        pathname.startsWith('/blogs') ||
-        pathname.startsWith('/about') ||
-        pathname.startsWith('/projects') ||
-        pathname.startsWith('/techstack') ||
-        pathname.startsWith('/services') ||
-        pathname.startsWith('/recommendations') ||
-        pathname.startsWith('/banner');
-
-    // 🔐 Block unauthenticated users
-    if (isProtectedRoute && !token) {
-        return NextResponse.redirect(new URL('/signin', request.url));
-    }
-
-    // 🔁 Prevent logged-in users from seeing signin
-    if (isPublicRoute && token) {
+    let isTokenValid = false;
+    if (token) {
         try {
             jwt.verify(token, process.env.JWT_SECRET!);
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+            isTokenValid = true;
         } catch {
-            // invalid token → allow access
-            return NextResponse.redirect(new URL('/signin', request.url));
+            isTokenValid = false;
         }
     }
 
-    // 🔎 Verify token on protected routes
-    if (isProtectedRoute && token) {
-        try {
-            jwt.verify(token, process.env.JWT_SECRET!);
-        } catch {
+    // Everything under this matcher that isn't explicitly public is an admin
+    // route — fail closed instead of enumerating protected path prefixes
+    // (route groups like `(ui-elements)` don't show up in the URL, so an
+    // allow-list of prefixes silently misses real pages).
+    if (!isPublicRoute) {
+        if (!isTokenValid) {
             return NextResponse.redirect(new URL('/signin', request.url));
         }
+        return NextResponse.next();
     }
 
-    return NextResponse.next();
+    // Already signed in and hitting a public-only page (e.g. /signin) → dashboard.
+    if (isTokenValid) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Public route with no/invalid token: let it through, but drop a stale
+    // cookie instead of redirecting back to the same public route (which
+    // would loop).
+    const response = NextResponse.next();
+    if (token && !isTokenValid) {
+        response.cookies.delete('token');
+    }
+    return response;
 }
 
 export const config = {

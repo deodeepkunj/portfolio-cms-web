@@ -1,5 +1,7 @@
 import { connectDB } from "@/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromToken } from "@/lib/auth";
+import { BlogUpdateSchema } from "@/lib/validators/blog.schema";
 import Blog from "../../models/Blog";
 
 /* ---------------- GET BLOG BY SLUG ---------------- */
@@ -11,8 +13,11 @@ export async function GET(
     await connectDB();
 
     const { slug } = await params;
+    const { searchParams } = new URL(request.url);
+    const mode = searchParams.get("mode");
 
-    const blog = await Blog.findOne({ slug, status: "published" });
+    const query = mode === "cms" ? { slug } : { slug, status: "published" };
+    const blog = await Blog.findOne(query);
 
     if (!blog) {
       return NextResponse.json(
@@ -39,8 +44,20 @@ export async function PUT(
   try {
     await connectDB();
 
+    const user = await getUserFromToken(request);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
+    }
+
     const { slug } = await params;
-    const body = await request.json();
+
+    const parsed = BlogUpdateSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: "Validation failed", errors: parsed.error.format() },
+        { status: 400 }
+      );
+    }
 
     const {
       title,
@@ -51,7 +68,7 @@ export async function PUT(
       categories,
       status,
       seo,
-    } = body;
+    } = parsed.data;
 
     // ❗ Prevent duplicate slug
     if (newSlug && newSlug !== slug) {
@@ -107,6 +124,11 @@ export async function DELETE(
 ) {
   try {
     await connectDB();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
+    }
 
     const { slug } = await params;
 

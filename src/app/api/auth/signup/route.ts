@@ -6,6 +6,15 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
+    // This is a single-owner CMS: once an account exists, public signup is closed.
+    const userCount = await User.countDocuments();
+    if (userCount > 0) {
+      return NextResponse.json(
+        { message: 'Sign up is disabled' },
+        { status: 403 }
+      );
+    }
+
     const { email, password, name } = await request.json();
 
     if (!email || !password || !name) {

@@ -1,11 +1,26 @@
 import { connectDB } from "@/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromToken } from "@/lib/auth";
+import { BlogCreateSchema } from "@/lib/validators/blog.schema";
 import Blog from "../models/Blog";
 
 /* ---------------- CREATE BLOG ---------------- */
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
+
+    const user = await getUserFromToken(request);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
+    }
+
+    const parsed = BlogCreateSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: "Validation failed", errors: parsed.error.format() },
+        { status: 400 }
+      );
+    }
 
     const {
       title,
@@ -16,14 +31,7 @@ export async function POST(request: NextRequest) {
       categories,
       status,
       seo,
-    } = await request.json();
-
-    if (!title || !slug || !content || !excerpt || !seo) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+    } = parsed.data;
 
     const existingBlog = await Blog.findOne({ slug });
     if (existingBlog) {

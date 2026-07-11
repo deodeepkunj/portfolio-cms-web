@@ -2,7 +2,7 @@
 
 export function useRecommendationApi() {
   const getAll = async () => {
-    const res = await fetch("/api/recommendations");
+    const res = await fetch("/api/recommendations?mode=cms");
     if (!res.ok) throw new Error("Failed to fetch");
     return res.json();
   };

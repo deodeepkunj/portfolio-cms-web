@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
+import { getUserFromToken } from "@/lib/auth";
+import { RecommendationUpdateSchema } from "@/lib/validators/recommendation.schema";
 import Recommendation from "../../models/Recommendation";
 
 /* ---------------- GET BY ID ---------------- */
@@ -31,18 +33,30 @@ export async function GET(
 
 /* ---------------- UPDATE ---------------- */
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
+    const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
+    }
+
     const { id } = await params; // ✅ FIX
-    const body = await req.json();
+
+    const parsed = RecommendationUpdateSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: "Validation failed", errors: parsed.error.format() },
+        { status: 400 }
+      );
+    }
 
     const updated = await Recommendation.findByIdAndUpdate(
       id,
-      body,
+      parsed.data,
       { new: true, runValidators: true }
     );
 
@@ -67,11 +81,16 @@ export async function PUT(
 
 /* ---------------- DELETE ---------------- */
 export async function DELETE(
-  _: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
+
+    const user = await getUserFromToken(req);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
+    }
 
     const { id } = await params; // ✅ FIX
     const deleted = await Recommendation.findByIdAndDelete(id);

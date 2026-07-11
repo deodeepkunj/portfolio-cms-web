@@ -58,7 +58,7 @@ export const useBlogApi = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/blogs/${id}`);
+      const response = await fetch(`/api/blogs/${id}?mode=cms`);
       const data = await response.json();
 
       if (!response.ok) {
