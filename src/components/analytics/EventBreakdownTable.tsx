@@ -8,17 +8,17 @@ import {
   TableRow,
 } from "../ui/table";
 import { useAnalyticsReport } from "@/hooks/useAnalyticsApi";
-import type { Campaigns } from "@/lib/googleAnalytics";
+import type { Events } from "@/lib/googleAnalytics";
 import AnalyticsErrorCard from "./AnalyticsErrorCard";
 import AnalyticsSkeleton from "./AnalyticsSkeleton";
-import { formatCurrency, formatNumber, formatRoas } from "./utils";
+import { formatCurrency, formatDecimal, formatNumber } from "./utils";
 import type { RangeDays } from "./DateRangeSelector";
 
-export default function CampaignsTable({ days }: { days: RangeDays }) {
-  const { data, loading, error } = useAnalyticsReport<Campaigns>("campaigns", days);
+export default function EventBreakdownTable({ days }: { days: RangeDays }) {
+  const { data, loading, error } = useAnalyticsReport<Events>("events", days);
 
-  if (error) return <AnalyticsErrorCard error={error} title="Campaigns" />;
-  if (loading) return <AnalyticsSkeleton height={280} />;
+  if (error) return <AnalyticsErrorCard error={error} title="Event Breakdown" />;
+  if (loading) return <AnalyticsSkeleton height={320} />;
 
   const rows = data?.rows ?? [];
   const currencyCode = data?.currencyCode;
@@ -28,13 +28,14 @@ export default function CampaignsTable({ days }: { days: RangeDays }) {
       <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Campaigns
+            Event Breakdown
           </h3>
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-            Google Ads campaign performance in the last {days === "all" ? 365 : days} days
+            Top events in the last {days === "all" ? 365 : days} days
           </p>
         </div>
       </div>
+
       <div className="max-w-full overflow-x-auto">
         <Table>
           <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
@@ -43,37 +44,31 @@ export default function CampaignsTable({ days }: { days: RangeDays }) {
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Campaign
+                Event name
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Clicks
+                Event count
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Cost
+                Total users
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Impressions
+                Event count per user
               </TableCell>
               <TableCell
                 isHeader
                 className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                CPC
-              </TableCell>
-              <TableCell
-                isHeader
-                className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-              >
-                ROAS
+                Total revenue
               </TableCell>
             </TableRow>
           </TableHeader>
@@ -81,32 +76,29 @@ export default function CampaignsTable({ days }: { days: RangeDays }) {
           <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
             {rows.length === 0 && (
               <TableRow>
-                <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400" colSpan={6}>
-                  No campaign data found for this timeframe. Make sure your GA4 property is linked to Google Ads and the selected date range contains active campaign traffic.
+                <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400" colSpan={5}>
+                  No event data found for this timeframe. Try a different date range or send more events.
                 </TableCell>
               </TableRow>
             )}
-            {rows.map((row, index) => (
-              <TableRow key={`${row.campaign}-${index}`}>
+            {rows.map((event, index) => (
+              <TableRow key={`${event.eventName}-${index}`}>
                 <TableCell className="py-3">
                   <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                    {row.campaign}
+                    {event.eventName}
                   </p>
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {formatNumber(row.clicks)}
+                  {formatNumber(event.eventCount)}
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {formatCurrency(row.cost, currencyCode)}
+                  {formatNumber(event.users)}
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {formatNumber(row.impressions)}
+                  {formatDecimal(event.eventCountPerUser)}
                 </TableCell>
                 <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {formatCurrency(row.cpc, currencyCode)}
-                </TableCell>
-                <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {formatRoas(row.roas)}
+                  {formatCurrency(event.revenue, currencyCode)}
                 </TableCell>
               </TableRow>
             ))}

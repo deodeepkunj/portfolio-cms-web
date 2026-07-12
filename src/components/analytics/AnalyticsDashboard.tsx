@@ -5,6 +5,7 @@ import AnalyticsMetrics from "./AnalyticsMetrics";
 import RealtimeCard from "./RealtimeCard";
 import VisitorsTrendChart from "./VisitorsTrendChart";
 import TopPagesTable from "./TopPagesTable";
+import EventBreakdownTable from "./EventBreakdownTable";
 import CountriesCard from "./CountriesCard";
 import DevicesDonut from "./DevicesDonut";
 import TrafficChannelsChart from "./TrafficChannelsChart";
@@ -48,6 +49,10 @@ export default function AnalyticsDashboard() {
 
           <div className="col-span-12 xl:col-span-7">
             <TopPagesTable days={days} />
+          </div>
+
+          <div className="col-span-12">
+            <EventBreakdownTable days={days} />
           </div>
         </div>
       )}

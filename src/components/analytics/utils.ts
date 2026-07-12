@@ -27,6 +27,10 @@ export function formatCurrency(value: number, currencyCode = "USD"): string {
   }
 }
 
+export function formatDecimal(value: number): string {
+  return value.toFixed(2);
+}
+
 export function formatRoas(roas: number): string {
   return `${roas.toFixed(2)}x`;
 }

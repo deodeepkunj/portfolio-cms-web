@@ -2,7 +2,7 @@
 
 import React from "react";
 import Badge from "../ui/badge/Badge";
-import { ArrowDownIcon, ArrowUpIcon, EyeIcon, GroupIcon, PieChartIcon, TimeIcon } from "@/icons";
+import { ArrowDownIcon, ArrowUpIcon, BoltIcon, EyeIcon, GroupIcon, PieChartIcon, TimeIcon } from "@/icons";
 import { useAnalyticsReport } from "@/hooks/useAnalyticsApi";
 import type { Overview } from "@/lib/googleAnalytics";
 import AnalyticsErrorCard from "./AnalyticsErrorCard";
@@ -72,6 +72,13 @@ export default function AnalyticsMetrics({ days }: { days: RangeDays }) {
         label="Page Views"
         value={formatNumber(data?.pageViews ?? 0)}
         delta={data?.deltas.pageViews ?? null}
+        loading={loading}
+      />
+      <MetricCard
+        icon={<BoltIcon className="text-gray-800 size-6 dark:text-white/90" />}
+        label="Event count"
+        value={formatNumber(data?.events ?? 0)}
+        delta={data?.deltas.events ?? null}
         loading={loading}
       />
       <MetricCard

@@ -31,10 +31,21 @@ function getClient(): BetaAnalyticsDataClient {
 const property = () => `properties/${process.env.GA_PROPERTY_ID}`;
 
 export const ALLOWED_DAYS = [7, 28, 90] as const;
-export type RangeDays = (typeof ALLOWED_DAYS)[number];
+export type RangeDays = (typeof ALLOWED_DAYS)[number] | "all";
 
 export function clampDays(days: number): RangeDays {
     return (ALLOWED_DAYS as readonly number[]).includes(days) ? (days as RangeDays) : 28;
+}
+
+const ALL_TIME_DAYS = 365;
+
+function getDateRange(daysInput: number | "all") {
+    if (daysInput === "all") {
+        return [{ startDate: `${ALL_TIME_DAYS}daysAgo`, endDate: "today" }];
+    }
+
+    const days = clampDays(daysInput);
+    return [{ startDate: `${days}daysAgo`, endDate: "today" }];
 }
 
 // --- in-memory TTL cache (protects GA4 API quotas) ---
@@ -71,18 +82,57 @@ export type Overview = {
     activeUsers: number;
     sessions: number;
     pageViews: number;
+    events: number;
     avgEngagementSecs: number;
     deltas: {
         activeUsers: number | null;
         sessions: number | null;
         pageViews: number | null;
+        events: number | null;
         avgEngagementSecs: number | null;
     };
 };
 
-export async function getOverview(daysInput: number): Promise<Overview> {
-    const days = clampDays(daysInput);
-    return cached(`overview:${days}`, REPORT_TTL_MS, async () => {
+export async function getOverview(daysInput: number | "all"): Promise<Overview> {
+    const cacheKey = daysInput === "all" ? "overview:all" : `overview:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
+        if (daysInput === "all") {
+            const [res] = await getClient().runReport({
+                property: property(),
+                dateRanges: getDateRange(daysInput),
+                metrics: [
+                    { name: "activeUsers" },
+                    { name: "sessions" },
+                    { name: "screenPageViews" },
+                    { name: "eventCount" },
+                    { name: "averageSessionDuration" },
+                ],
+            });
+
+            const row = (res.rows ?? [])[0] as GaRow | undefined;
+            const activeUsers = num(row, 0);
+            const sessions = num(row, 1);
+            const pageViews = num(row, 2);
+            const events = num(row, 3);
+            const avgEngagementSecs = num(row, 4);
+
+            return {
+                activeUsers,
+                sessions,
+                pageViews,
+                events,
+                avgEngagementSecs,
+                deltas: {
+                    activeUsers: null,
+                    sessions: null,
+                    pageViews: null,
+                    events: null,
+                    avgEngagementSecs: null,
+                },
+            };
+        }
+
+        const days = clampDays(daysInput);
         const [res] = await getClient().runReport({
             property: property(),
             // two ranges: current period + the one before it, for deltas.
@@ -95,6 +145,7 @@ export async function getOverview(daysInput: number): Promise<Overview> {
                 { name: "activeUsers" },
                 { name: "sessions" },
                 { name: "screenPageViews" },
+                { name: "eventCount" },
                 { name: "averageSessionDuration" },
             ],
         });
@@ -105,18 +156,21 @@ export async function getOverview(daysInput: number): Promise<Overview> {
         const activeUsers = num(current, 0);
         const sessions = num(current, 1);
         const pageViews = num(current, 2);
-        const avgEngagementSecs = num(current, 3);
+        const events = num(current, 3);
+        const avgEngagementSecs = num(current, 4);
 
         return {
             activeUsers,
             sessions,
             pageViews,
+            events,
             avgEngagementSecs,
             deltas: {
                 activeUsers: pctDelta(activeUsers, num(previous, 0)),
                 sessions: pctDelta(sessions, num(previous, 1)),
                 pageViews: pctDelta(pageViews, num(previous, 2)),
-                avgEngagementSecs: pctDelta(avgEngagementSecs, num(previous, 3)),
+                events: pctDelta(events, num(previous, 3)),
+                avgEngagementSecs: pctDelta(avgEngagementSecs, num(previous, 4)),
             },
         };
     });
@@ -136,37 +190,29 @@ export async function getRealtimeUsers(): Promise<RealtimeUsers> {
 
 export type Trend = { dates: string[]; activeUsers: number[]; pageViews: number[] };
 
-export async function getTrend(daysInput: number): Promise<Trend> {
-    const days = clampDays(daysInput);
-    return cached(`trend:${days}`, REPORT_TTL_MS, async () => {
+export async function getTrend(daysInput: number | "all"): Promise<Trend> {
+    const cacheKey = daysInput === "all" ? "trend:all" : `trend:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
         const [res] = await getClient().runReport({
             property: property(),
-            dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+            dateRanges: getDateRange(daysInput),
             dimensions: [{ name: "date" }],
             metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
             orderBys: [{ dimension: { dimensionName: "date" } }],
         });
 
-        // GA omits dates with no data, so index rows by date and fill gaps
-        const byDate = new Map<string, GaRow>();
-        for (const row of (res.rows ?? []) as GaRow[]) {
-            byDate.set(dim(row, 0), row); // YYYYMMDD
-        }
-
+        const rows = (res.rows ?? []) as GaRow[];
         const dates: string[] = [];
         const activeUsers: number[] = [];
         const pageViews: number[] = [];
-        for (let i = days; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const key = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(
-                d.getDate()
-            ).padStart(2, "0")}`;
-            const row = byDate.get(key);
+
+        for (const row of rows) {
+            const key = dim(row, 0);
             dates.push(`${key.slice(0, 4)}-${key.slice(4, 6)}-${key.slice(6, 8)}`);
             activeUsers.push(num(row, 0));
             pageViews.push(num(row, 1));
         }
+
         return { dates, activeUsers, pageViews };
     });
 }
@@ -175,12 +221,12 @@ export type TopPages = {
     rows: Array<{ path: string; title: string; views: number; users: number; avgDuration: number }>;
 };
 
-export async function getTopPages(daysInput: number): Promise<TopPages> {
-    const days = clampDays(daysInput);
-    return cached(`top-pages:${days}`, REPORT_TTL_MS, async () => {
+export async function getTopPages(daysInput: number | "all"): Promise<TopPages> {
+    const cacheKey = daysInput === "all" ? `top-pages:all` : `top-pages:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
         const [res] = await getClient().runReport({
             property: property(),
-            dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+            dateRanges: getDateRange(daysInput),
             dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
             metrics: [
                 { name: "screenPageViews" },
@@ -207,12 +253,12 @@ export type Countries = {
     rows: Array<{ country: string; users: number; pct: number }>;
 };
 
-export async function getCountries(daysInput: number): Promise<Countries> {
-    const days = clampDays(daysInput);
-    return cached(`countries:${days}`, REPORT_TTL_MS, async () => {
+export async function getCountries(daysInput: number | "all"): Promise<Countries> {
+    const cacheKey = daysInput === "all" ? `countries:all` : `countries:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
         const [res] = await getClient().runReport({
             property: property(),
-            dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+            dateRanges: getDateRange(daysInput),
             dimensions: [{ name: "country" }],
             metrics: [{ name: "activeUsers" }],
             orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
@@ -235,12 +281,12 @@ export async function getCountries(daysInput: number): Promise<Countries> {
 
 export type Devices = { rows: Array<{ device: string; users: number }> };
 
-export async function getDevices(daysInput: number): Promise<Devices> {
-    const days = clampDays(daysInput);
-    return cached(`devices:${days}`, REPORT_TTL_MS, async () => {
+export async function getDevices(daysInput: number | "all"): Promise<Devices> {
+    const cacheKey = daysInput === "all" ? `devices:all` : `devices:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
         const [res] = await getClient().runReport({
             property: property(),
-            dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+            dateRanges: getDateRange(daysInput),
             dimensions: [{ name: "deviceCategory" }],
             metrics: [{ name: "activeUsers" }],
             orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
@@ -256,12 +302,12 @@ export async function getDevices(daysInput: number): Promise<Devices> {
 
 export type Channels = { rows: Array<{ channel: string; sessions: number }> };
 
-export async function getChannels(daysInput: number): Promise<Channels> {
-    const days = clampDays(daysInput);
-    return cached(`channels:${days}`, REPORT_TTL_MS, async () => {
+export async function getChannels(daysInput: number | "all"): Promise<Channels> {
+    const cacheKey = daysInput === "all" ? `channels:all` : `channels:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
         const [res] = await getClient().runReport({
             property: property(),
-            dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+            dateRanges: getDateRange(daysInput),
             dimensions: [{ name: "sessionDefaultChannelGroup" }],
             metrics: [{ name: "sessions" }],
             orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
@@ -271,6 +317,46 @@ export async function getChannels(daysInput: number): Promise<Channels> {
             rows: ((res.rows ?? []) as GaRow[]).map((row) => ({
                 channel: dim(row, 0),
                 sessions: num(row, 0),
+            })),
+        };
+    });
+}
+
+export type Events = {
+    currencyCode: string;
+    rows: Array<{
+        eventName: string;
+        eventCount: number;
+        users: number;
+        eventCountPerUser: number;
+        revenue: number;
+    }>;
+};
+
+export async function getEvents(daysInput: number | "all"): Promise<Events> {
+    const cacheKey = daysInput === "all" ? `events:all` : `events:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
+        const [res] = await getClient().runReport({
+            property: property(),
+            dateRanges: getDateRange(daysInput),
+            dimensions: [{ name: "eventName" }],
+            metrics: [
+                { name: "eventCount" },
+                { name: "totalUsers" },
+                { name: "eventCountPerUser" },
+                { name: "purchaseRevenue" },
+            ],
+            orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+            limit: 10,
+        });
+        return {
+            currencyCode: res.metadata?.currencyCode ?? "USD",
+            rows: ((res.rows ?? []) as GaRow[]).map((row) => ({
+                eventName: dim(row, 0) || "(not set)",
+                eventCount: num(row, 0),
+                users: num(row, 1),
+                eventCountPerUser: num(row, 2),
+                revenue: num(row, 3),
             })),
         };
     });
@@ -303,44 +389,105 @@ const CAMPAIGN_OVERVIEW_METRICS = [
     { name: "returnOnAdSpend" },
 ];
 
-export async function getCampaignsOverview(daysInput: number): Promise<CampaignsOverview> {
-    const days = clampDays(daysInput);
-    return cached(`campaigns-overview:${days}`, REPORT_TTL_MS, async () => {
-        // Advertising metrics (advertiserAd*, returnOnAdSpend) don't support
-        // multi-dateRange comparison requests, unlike core metrics in getOverview() —
-        // so the current and previous periods are queried separately here.
+export async function getCampaignsOverview(daysInput: number | "all"): Promise<CampaignsOverview> {
+    const cacheKey = daysInput === "all" ? `campaigns-overview:all` : `campaigns-overview:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
+        // Advertising metrics (advertiserAd*, returnOnAdSpend) require a
+        // compatible campaign dimension in the report request.
+        if (daysInput === "all") {
+            const [currentRes] = await getClient().runReport({
+                property: property(),
+                dateRanges: getDateRange(daysInput),
+                dimensions: [{ name: "sessionCampaignName" }],
+                metrics: CAMPAIGN_OVERVIEW_METRICS,
+            });
+
+            const current = (currentRes.rows ?? [])[0] as GaRow | undefined;
+            const clicks = num(current, 0);
+            const cost = num(current, 1);
+            const impressions = num(current, 2);
+            const roas = num(current, 3);
+
+            return {
+                clicks,
+                cost,
+                impressions,
+                roas,
+                currencyCode: currentRes.metadata?.currencyCode ?? "USD",
+                deltas: {
+                    clicks: null,
+                    cost: null,
+                    impressions: null,
+                    roas: null,
+                },
+            };
+        }
+
+        const days = clampDays(daysInput);
         const [[currentRes], [previousRes]] = await Promise.all([
             getClient().runReport({
                 property: property(),
                 dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+                dimensions: [{ name: "sessionCampaignName" }],
                 metrics: CAMPAIGN_OVERVIEW_METRICS,
             }),
             getClient().runReport({
                 property: property(),
                 dateRanges: [{ startDate: `${2 * days}daysAgo`, endDate: `${days + 1}daysAgo` }],
+                dimensions: [{ name: "sessionCampaignName" }],
                 metrics: CAMPAIGN_OVERVIEW_METRICS,
             }),
         ]);
 
-        const current = (currentRes.rows ?? [])[0] as GaRow | undefined;
-        const previous = (previousRes.rows ?? [])[0] as GaRow | undefined;
+        const currentRows = (currentRes.rows ?? []) as GaRow[];
+        const previousRows = (previousRes.rows ?? []) as GaRow[];
 
-        const clicks = num(current, 0);
-        const cost = num(current, 1);
-        const impressions = num(current, 2);
-        const roas = num(current, 3);
+        const currentTotals = currentRows.reduce(
+            (totals, row) => {
+                const clicks = num(row, 0);
+                const cost = num(row, 1);
+                const impressions = num(row, 2);
+                const roas = num(row, 3);
+                return {
+                    clicks: totals.clicks + clicks,
+                    cost: totals.cost + cost,
+                    impressions: totals.impressions + impressions,
+                    roasRevenue: totals.roasRevenue + cost * roas,
+                };
+            },
+            { clicks: 0, cost: 0, impressions: 0, roasRevenue: 0 }
+        );
+
+        const previousTotals = previousRows.reduce(
+            (totals, row) => {
+                const clicks = num(row, 0);
+                const cost = num(row, 1);
+                const impressions = num(row, 2);
+                const roas = num(row, 3);
+                return {
+                    clicks: totals.clicks + clicks,
+                    cost: totals.cost + cost,
+                    impressions: totals.impressions + impressions,
+                    roasRevenue: totals.roasRevenue + cost * roas,
+                };
+            },
+            { clicks: 0, cost: 0, impressions: 0, roasRevenue: 0 }
+        );
+
+        const roas = currentTotals.cost ? currentTotals.roasRevenue / currentTotals.cost : 0;
+        const previousRoas = previousTotals.cost ? previousTotals.roasRevenue / previousTotals.cost : 0;
 
         return {
-            clicks,
-            cost,
-            impressions,
+            clicks: currentTotals.clicks,
+            cost: currentTotals.cost,
+            impressions: currentTotals.impressions,
             roas,
             currencyCode: currentRes.metadata?.currencyCode ?? "USD",
             deltas: {
-                clicks: pctDelta(clicks, num(previous, 0)),
-                cost: pctDelta(cost, num(previous, 1)),
-                impressions: pctDelta(impressions, num(previous, 2)),
-                roas: pctDelta(roas, num(previous, 3)),
+                clicks: pctDelta(currentTotals.clicks, previousTotals.clicks),
+                cost: pctDelta(currentTotals.cost, previousTotals.cost),
+                impressions: pctDelta(currentTotals.impressions, previousTotals.impressions),
+                roas: pctDelta(roas, previousRoas),
             },
         };
     });
@@ -358,13 +505,13 @@ export type Campaigns = {
     }>;
 };
 
-export async function getCampaigns(daysInput: number): Promise<Campaigns> {
-    const days = clampDays(daysInput);
-    return cached(`campaigns:${days}`, REPORT_TTL_MS, async () => {
+export async function getCampaigns(daysInput: number | "all"): Promise<Campaigns> {
+    const cacheKey = daysInput === "all" ? `campaigns:all` : `campaigns:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
         const [res] = await getClient().runReport({
             property: property(),
-            dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
-            dimensions: [{ name: "sessionGoogleAdsCampaignName" }],
+            dateRanges: getDateRange(daysInput),
+            dimensions: [{ name: "sessionCampaignName" }],
             metrics: [
                 { name: "advertiserAdClicks" },
                 { name: "advertiserAdCost" },
@@ -373,7 +520,7 @@ export async function getCampaigns(daysInput: number): Promise<Campaigns> {
                 { name: "returnOnAdSpend" },
             ],
             orderBys: [{ metric: { metricName: "advertiserAdCost" }, desc: true }],
-            limit: 10,
+            limit: 1000,
         });
         return {
             currencyCode: res.metadata?.currencyCode ?? "USD",

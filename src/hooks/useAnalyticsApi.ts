@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 export type AnalyticsError = "not-configured" | "failed";
 
 export function useAnalyticsApi() {
-  const getReport = async (report: string, days?: number) => {
+  const getReport = async (report: string, days?: number | "all") => {
     const qs = days ? `&days=${days}` : "";
     const res = await fetch(`/api/analytics?report=${report}${qs}`);
     if (res.status === 503) throw new Error("not-configured");
@@ -21,7 +21,7 @@ export function useAnalyticsApi() {
  * Refetches when `report` or `days` change; optional `refreshMs`
  * polls in the background without flashing the loading state.
  */
-export function useAnalyticsReport<T>(report: string, days?: number, refreshMs?: number) {
+export function useAnalyticsReport<T>(report: string, days?: number | "all", refreshMs?: number) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AnalyticsError | null>(null);

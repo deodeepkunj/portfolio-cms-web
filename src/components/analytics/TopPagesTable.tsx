@@ -68,16 +68,13 @@ export default function TopPagesTable({ days }: { days: RangeDays }) {
           <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
             {rows.length === 0 && (
               <TableRow>
-                <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                <TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400" colSpan={4}>
                   No data yet
                 </TableCell>
-                <TableCell className="py-3">{""}</TableCell>
-                <TableCell className="py-3">{""}</TableCell>
-                <TableCell className="py-3">{""}</TableCell>
               </TableRow>
             )}
-            {rows.map((page) => (
-              <TableRow key={page.path}>
+            {rows.map((page, index) => (
+              <TableRow key={`${page.path}-${index}`}>
                 <TableCell className="py-3">
                   <div>
                     <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">

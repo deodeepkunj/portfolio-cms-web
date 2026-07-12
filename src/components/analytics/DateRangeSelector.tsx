@@ -1,6 +1,6 @@
 "use client";
 
-export const RANGE_OPTIONS = [7, 28, 90] as const;
+export const RANGE_OPTIONS = [7, 28, 90, "all"] as const;
 export type RangeDays = (typeof RANGE_OPTIONS)[number];
 
 interface Props {
@@ -21,7 +21,7 @@ export default function DateRangeSelector({ value, onChange }: Props) {
               : "text-gray-500 dark:text-gray-400"
           }`}
         >
-          {days}d
+          {days === "all" ? "All the time" : `${days}d`}
         </button>
       ))}
     </div>

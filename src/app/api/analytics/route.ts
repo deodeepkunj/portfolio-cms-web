@@ -7,6 +7,7 @@ import {
     getChannels,
     getCountries,
     getDevices,
+    getEvents,
     getOverview,
     getRealtimeUsers,
     getTopPages,
@@ -28,7 +29,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const report = searchParams.get("report");
-    const days = Number(searchParams.get("days")) || 28;
+    const rawDays = searchParams.get("days");
+    const days = rawDays === "all" ? "all" : rawDays ? Number(rawDays) : 28;
 
     try {
         switch (report) {
@@ -50,6 +52,8 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json(await getCampaignsOverview(days));
             case "campaigns":
                 return NextResponse.json(await getCampaigns(days));
+            case "events":
+                return NextResponse.json(await getEvents(days));
             default:
                 return NextResponse.json({ message: "Unknown report" }, { status: 400 });
         }
