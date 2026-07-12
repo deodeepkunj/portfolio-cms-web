@@ -277,15 +277,47 @@ function InputField({label, value, onChange, type = "text"}: {
         </div>
     );
 }
+async function uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
 
-function HeroImageUploader({imageUrl, onUpload}: { imageUrl: string; onUpload: (url: string) => void }) {
+    const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Upload failed");
+    }
+
+    const data = await res.json();
+    return data.url;
+}
+
+function HeroImageUploader({imageUrl, onUpload}: { imageUrl: string; onUpload: any }) {
+    const [uploading, setUploading] = useState(false);
     const {getRootProps, getInputProps, isDragActive} = useDropzone({
         accept: {"image/*": []},
         multiple: false,
-        onDrop: (files) => {
-            const url = URL.createObjectURL(files[0]);
-            onUpload(url);
-        },
+        // onDrop: (files) => {
+        //     const url = URL.createObjectURL(files[0]);
+        //     onUpload(url);
+        // },
+            onDrop: async (files) => {
+              if (!files[0]) return;
+        
+              try {
+                setUploading(true);
+                const uploadedUrl = await uploadImage(files[0]);
+                onUpload(uploadedUrl);
+                toast.success("Image uploaded");
+              } catch {
+                toast.error("Image upload failed");
+              } finally {
+                setUploading(false);
+              }
+            },
     });
 
     return (
