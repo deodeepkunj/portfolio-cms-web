@@ -230,7 +230,10 @@ export default function AboutUsPage() {
                 <div className="space-y-8">
                     <HeroImageUploader
                         imageUrl={formData.hero.imageUrl}
-                        onUpload={(url) => setFormData({...formData, hero: {...formData.hero, imageUrl: url}})}
+                        onUpload={(url) => setFormData((prev) => ({
+                            ...prev,
+                            hero: {...prev.hero, imageUrl: url},
+                        }))}
                     />
 
                     <SectionCard title="Statistics">
@@ -295,29 +298,29 @@ async function uploadImage(file: File): Promise<string> {
     return data.url;
 }
 
-function HeroImageUploader({imageUrl, onUpload}: { imageUrl: string; onUpload: any }) {
+function HeroImageUploader({imageUrl, onUpload}: { imageUrl: string; onUpload: (url: string) => void }) {
     const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
     const {getRootProps, getInputProps, isDragActive} = useDropzone({
         accept: {"image/*": []},
         multiple: false,
-        // onDrop: (files) => {
-        //     const url = URL.createObjectURL(files[0]);
-        //     onUpload(url);
-        // },
-            onDrop: async (files) => {
-              if (!files[0]) return;
-        
-              try {
-                setUploading(true);
-                const uploadedUrl = await uploadImage(files[0]);
-                onUpload(uploadedUrl);
-                toast.success("Image uploaded");
-              } catch {
-                toast.error("Image upload failed");
-              } finally {
-                setUploading(false);
-              }
-            },
+        onDrop: async (files) => {
+          if (!files[0]) return;
+
+          setUploadError(null);
+          try {
+            setUploading(true);
+            const uploadedUrl = await uploadImage(files[0]);
+            onUpload(uploadedUrl);
+            toast.success("Image uploaded");
+          } catch (error) {
+            console.error("Image upload failed", error);
+            setUploadError("Image upload failed. Please try again.");
+            toast.error("Image upload failed");
+          } finally {
+            setUploading(false);
+          }
+        },
     });
 
     return (
@@ -325,8 +328,8 @@ function HeroImageUploader({imageUrl, onUpload}: { imageUrl: string; onUpload: a
             <div
                 {...getRootProps()}
                 className={`cursor-pointer rounded-xl border-2 border-dashed p-4 transition-all ${
-                    isDragActive ? "border-brand-500 bg-brand-50/10" : "border-gray-200 dark:border-gray-700"
-                }`}
+                    uploading ? "opacity-70 pointer-events-none" : ""
+                } ${isDragActive ? "border-brand-500 bg-brand-50/10" : "border-gray-200 dark:border-gray-700"}`}
             >
                 <input {...getInputProps()} />
                 {imageUrl ? (
@@ -352,6 +355,12 @@ function HeroImageUploader({imageUrl, onUpload}: { imageUrl: string; onUpload: a
                     </div>
                 )}
             </div>
+            {uploading && (
+                <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Uploading image…</p>
+            )}
+            {uploadError && (
+                <p className="mt-2 text-sm text-red-500">{uploadError}</p>
+            )}
         </ComponentCard>
     );
 }
