@@ -132,7 +132,7 @@ export async function getOverview(daysInput: number | "all"): Promise<Overview> 
             };
         }
 
-        const days = clampDays(daysInput);
+        const days = clampDays(daysInput) as number;
         const [res] = await getClient().runReport({
             property: property(),
             // two ranges: current period + the one before it, for deltas.
@@ -423,7 +423,7 @@ export async function getCampaignsOverview(daysInput: number | "all"): Promise<C
             };
         }
 
-        const days = clampDays(daysInput);
+        const days = clampDays(daysInput) as number;
         const [[currentRes], [previousRes]] = await Promise.all([
             getClient().runReport({
                 property: property(),
