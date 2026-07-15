@@ -2,7 +2,9 @@ import {NextRequest, NextResponse} from 'next/server';
 import jwt from "jsonwebtoken"
 
 const ALLOWED_ORIGINS = [
+  "https://deodeep.dev",
   "https://www.deodeep.dev",
+  "http://localhost:3000",
   "http://localhost:3001",
 ];
 
