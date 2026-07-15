@@ -378,12 +378,16 @@ export type CampaignsOverview = {
     cost: number;
     impressions: number;
     roas: number;
+    ctr: number;
+    avgCpc: number;
     currencyCode: string;
     deltas: {
         clicks: number | null;
         cost: number | null;
         impressions: number | null;
         roas: number | null;
+        ctr: number | null;
+        avgCpc: number | null;
     };
 };
 
@@ -412,18 +416,24 @@ export async function getCampaignsOverview(daysInput: number | "all"): Promise<C
             const cost = num(current, 1);
             const impressions = num(current, 2);
             const roas = num(current, 3);
+            const ctr = impressions ? (clicks / impressions) * 100 : 0;
+            const avgCpc = clicks ? cost / clicks : 0;
 
             return {
                 clicks,
                 cost,
                 impressions,
                 roas,
+                ctr,
+                avgCpc,
                 currencyCode: currentRes.metadata?.currencyCode ?? "USD",
                 deltas: {
                     clicks: null,
                     cost: null,
                     impressions: null,
                     roas: null,
+                    ctr: null,
+                    avgCpc: null,
                 },
             };
         }
@@ -484,18 +494,26 @@ export async function getCampaignsOverview(daysInput: number | "all"): Promise<C
 
         const roas = currentTotals.cost ? currentTotals.roasRevenue / currentTotals.cost : 0;
         const previousRoas = previousTotals.cost ? previousTotals.roasRevenue / previousTotals.cost : 0;
+        const ctr = currentTotals.impressions ? (currentTotals.clicks / currentTotals.impressions) * 100 : 0;
+        const previousCtr = previousTotals.impressions ? (previousTotals.clicks / previousTotals.impressions) * 100 : 0;
+        const avgCpc = currentTotals.clicks ? currentTotals.cost / currentTotals.clicks : 0;
+        const previousAvgCpc = previousTotals.clicks ? previousTotals.cost / previousTotals.clicks : 0;
 
         return {
             clicks: currentTotals.clicks,
             cost: currentTotals.cost,
             impressions: currentTotals.impressions,
             roas,
+            ctr,
+            avgCpc,
             currencyCode: currentRes.metadata?.currencyCode ?? "USD",
             deltas: {
                 clicks: pctDelta(currentTotals.clicks, previousTotals.clicks),
                 cost: pctDelta(currentTotals.cost, previousTotals.cost),
                 impressions: pctDelta(currentTotals.impressions, previousTotals.impressions),
                 roas: pctDelta(roas, previousRoas),
+                ctr: pctDelta(ctr, previousCtr),
+                avgCpc: pctDelta(avgCpc, previousAvgCpc),
             },
         };
     });
@@ -540,6 +558,100 @@ export async function getCampaigns(daysInput: number | "all"): Promise<Campaigns
                 cpc: num(row, 3),
                 roas: num(row, 4),
             })),
+        };
+    });
+}
+
+export type AdGroups = {
+    currencyCode: string;
+    rows: Array<{
+        adGroup: string;
+        campaign: string;
+        clicks: number;
+        cost: number;
+        impressions: number;
+        ctr: number;
+        cpc: number;
+    }>;
+};
+
+export async function getAdGroups(daysInput: number | "all"): Promise<AdGroups> {
+    const cacheKey = daysInput === "all" ? `ad-groups:all` : `ad-groups:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
+        const [res] = await getClient().runReport({
+            property: property(),
+            dateRanges: getDateRange(daysInput),
+            dimensions: [
+                { name: "sessionGoogleAdsAdGroupName" },
+                { name: "sessionGoogleAdsCampaignName" },
+            ],
+            metrics: [
+                { name: "advertiserAdClicks" },
+                { name: "advertiserAdCost" },
+                { name: "advertiserAdImpressions" },
+                { name: "advertiserAdCostPerClick" },
+            ],
+            orderBys: [{ metric: { metricName: "advertiserAdClicks" }, desc: true }],
+            limit: 25,
+        });
+        return {
+            currencyCode: res.metadata?.currencyCode ?? "USD",
+            rows: ((res.rows ?? []) as GaRow[]).map((row) => {
+                const clicks = num(row, 0);
+                const impressions = num(row, 2);
+                return {
+                    adGroup: dim(row, 0) || "(not set)",
+                    campaign: dim(row, 1) || "(not set)",
+                    clicks,
+                    cost: num(row, 1),
+                    impressions,
+                    ctr: impressions ? (clicks / impressions) * 100 : 0,
+                    cpc: num(row, 3),
+                };
+            }),
+        };
+    });
+}
+
+export type SearchTerms = {
+    currencyCode: string;
+    rows: Array<{
+        query: string;
+        clicks: number;
+        impressions: number;
+        ctr: number;
+        cost: number;
+    }>;
+};
+
+export async function getSearchTerms(daysInput: number | "all"): Promise<SearchTerms> {
+    const cacheKey = daysInput === "all" ? `search-terms:all` : `search-terms:${clampDays(daysInput)}`;
+    return cached(cacheKey, REPORT_TTL_MS, async () => {
+        const [res] = await getClient().runReport({
+            property: property(),
+            dateRanges: getDateRange(daysInput),
+            dimensions: [{ name: "sessionGoogleAdsQuery" }],
+            metrics: [
+                { name: "advertiserAdClicks" },
+                { name: "advertiserAdImpressions" },
+                { name: "advertiserAdCost" },
+            ],
+            orderBys: [{ metric: { metricName: "advertiserAdClicks" }, desc: true }],
+            limit: 25,
+        });
+        return {
+            currencyCode: res.metadata?.currencyCode ?? "USD",
+            rows: ((res.rows ?? []) as GaRow[]).map((row) => {
+                const clicks = num(row, 0);
+                const impressions = num(row, 1);
+                return {
+                    query: dim(row, 0) || "(not set)",
+                    clicks,
+                    impressions,
+                    ctr: impressions ? (clicks / impressions) * 100 : 0,
+                    cost: num(row, 2),
+                };
+            }),
         };
     });
 }

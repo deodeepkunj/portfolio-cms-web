@@ -15,6 +15,8 @@ import {
   getOverview,
   getTrend,
   getTopPages,
+  getAdGroups,
+  getSearchTerms,
   isGaConfigured,
 } from "@/lib/googleAnalytics";
 
@@ -67,6 +69,8 @@ export default async function Dashboard({
         events={null}
         campaignsOverview={null}
         campaigns={null}
+        adGroups={null}
+        searchTerms={null}
       />
     );
   }
@@ -82,6 +86,8 @@ export default async function Dashboard({
     events,
     campaignsOverview,
     campaigns,
+    adGroups,
+    searchTerms,
   ] = await Promise.all([
     getOverview(days).catch(() => null),
     getTrend(days).catch(() => null),
@@ -92,6 +98,8 @@ export default async function Dashboard({
     getEvents(days).catch(() => null),
     getCampaignsOverview(days).catch(() => null),
     getCampaigns(days).catch(() => null),
+    getAdGroups(days).catch(() => null),
+    getSearchTerms(days).catch(() => null),
   ]);
 
   return (
@@ -107,6 +115,8 @@ export default async function Dashboard({
       events={events}
       campaignsOverview={campaignsOverview}
       campaigns={campaigns}
+      adGroups={adGroups}
+      searchTerms={searchTerms}
     />
   );
 }

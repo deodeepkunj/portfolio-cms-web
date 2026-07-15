@@ -10,6 +10,8 @@ import DevicesDonut from "./DevicesDonut";
 import TrafficChannelsChart from "./TrafficChannelsChart";
 import CampaignMetrics from "./CampaignMetrics";
 import CampaignsTable from "./CampaignsTable";
+import AdGroupsTable from "./AdGroupsTable";
+import SearchTermsTable from "./SearchTermsTable";
 import type {
   Overview,
   Trend,
@@ -20,6 +22,8 @@ import type {
   Events,
   CampaignsOverview,
   Campaigns,
+  AdGroups,
+  SearchTerms,
 } from "@/lib/googleAnalytics";
 
 interface Props {
@@ -34,6 +38,8 @@ interface Props {
   events: Events | null;
   campaignsOverview: CampaignsOverview | null;
   campaigns: Campaigns | null;
+  adGroups: AdGroups | null;
+  searchTerms: SearchTerms | null;
 }
 
 export default function AnalyticsDashboard({
@@ -48,6 +54,8 @@ export default function AnalyticsDashboard({
   events,
   campaignsOverview,
   campaigns,
+  adGroups,
+  searchTerms,
 }: Props) {
   return (
     <div>
@@ -101,6 +109,12 @@ export default function AnalyticsDashboard({
         <div className="grid grid-cols-12 gap-4 md:gap-6">
           <div className="col-span-12">
             <CampaignMetrics data={campaignsOverview} />
+          </div>
+          <div className="col-span-12 xl:col-span-6">
+            <AdGroupsTable data={adGroups} days={days} />
+          </div>
+          <div className="col-span-12 xl:col-span-6">
+            <SearchTermsTable data={searchTerms} days={days} />
           </div>
           <div className="col-span-12">
             <CampaignsTable data={campaigns} days={days} />

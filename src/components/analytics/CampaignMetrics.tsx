@@ -1,5 +1,5 @@
 import Badge from "../ui/badge/Badge";
-import { ArrowDownIcon, ArrowUpIcon, BoltIcon, DollarLineIcon, GridIcon, ShootingStarIcon } from "@/icons";
+import { ArrowDownIcon, ArrowUpIcon, BoltIcon, DollarLineIcon, GridIcon, PieChartIcon, ShootingStarIcon, TimeIcon } from "@/icons";
 import type { CampaignsOverview } from "@/lib/googleAnalytics";
 import { formatCurrency, formatDelta, formatNumber, formatRoas } from "./utils";
 import type { ReactNode } from "react";
@@ -35,7 +35,7 @@ function MetricCard({ icon, label, value, delta }: MetricCardProps) {
 
 export default function CampaignMetrics({ data }: { data: CampaignsOverview | null }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 md:gap-6">
       <MetricCard
         icon={<BoltIcon className="text-gray-800 dark:text-white/90" />}
         label="Ad Clicks"
@@ -56,9 +56,21 @@ export default function CampaignMetrics({ data }: { data: CampaignsOverview | nu
       />
       <MetricCard
         icon={<ShootingStarIcon className="text-gray-800 dark:text-white/90" />}
-        label="Return on Ad Spend"
+        label="ROAS"
         value={formatRoas(data?.roas ?? 0)}
         delta={data?.deltas.roas ?? null}
+      />
+      <MetricCard
+        icon={<PieChartIcon className="text-gray-800 dark:text-white/90" />}
+        label="Click-Through Rate"
+        value={`${(data?.ctr ?? 0).toFixed(2)}%`}
+        delta={data?.deltas.ctr ?? null}
+      />
+      <MetricCard
+        icon={<TimeIcon className="text-gray-800 dark:text-white/90" />}
+        label="Avg CPC"
+        value={formatCurrency(data?.avgCpc ?? 0, data?.currencyCode)}
+        delta={data?.deltas.avgCpc ?? null}
       />
     </div>
   );

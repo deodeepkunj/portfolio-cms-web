@@ -12,6 +12,8 @@ import {
     getRealtimeUsers,
     getTopPages,
     getTrend,
+    getAdGroups,
+    getSearchTerms,
     isGaConfigured,
 } from "@/lib/googleAnalytics";
 
@@ -52,6 +54,10 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json(await getCampaignsOverview(days));
             case "campaigns":
                 return NextResponse.json(await getCampaigns(days));
+            case "ad-groups":
+                return NextResponse.json(await getAdGroups(days));
+            case "search-terms":
+                return NextResponse.json(await getSearchTerms(days));
             case "events":
                 return NextResponse.json(await getEvents(days));
             default:
