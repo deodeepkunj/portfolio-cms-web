@@ -30,7 +30,7 @@ function parseTab(raw?: string): DashboardTab {
 function parseDays(raw?: string): RangeDays {
   if (raw === "all") return "all";
   const n = Number(raw);
-  if (n === 7 || n === 28 || n === 90) return n;
+  if (n === 1 || n === 7 || n === 28 || n === 90) return n;
   return 28;
 }
 

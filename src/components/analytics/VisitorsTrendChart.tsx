@@ -51,7 +51,7 @@ export default function VisitorsTrendChart({ data, days }: Props) {
     dataLabels: { enabled: false },
     tooltip: {
       enabled: true,
-      x: { format: "dd MMM yyyy" },
+      x: { format: days === 1 ? "HH:mm dd MMM" : "dd MMM yyyy" },
     },
     xaxis: {
       type: "datetime",
@@ -77,7 +77,9 @@ export default function VisitorsTrendChart({ data, days }: Props) {
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Visitors Trend</h3>
         <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-          Active users and page views over the last {days === "all" ? 365 : days} days
+          {days === 1
+            ? "Active users and page views by hour today"
+            : `Active users and page views over the last ${days === "all" ? 365 : days} days`}
         </p>
       </div>
       <div className="max-w-full overflow-x-auto custom-scrollbar">

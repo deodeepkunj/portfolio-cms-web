@@ -3,10 +3,11 @@
 import { useRouter, usePathname } from "next/navigation";
 import type { DashboardTab } from "./DashboardTabs";
 
-export const RANGE_OPTIONS = [7, 28, 90, "all"] as const;
+export const RANGE_OPTIONS = [1, 7, 28, 90, "all"] as const;
 export type RangeDays = (typeof RANGE_OPTIONS)[number];
 
 const LABELS: Record<string, string> = {
+  "1": "Today",
   "7": "7d",
   "28": "28d",
   "90": "90d",

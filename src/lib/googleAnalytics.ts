@@ -30,7 +30,7 @@ function getClient(): BetaAnalyticsDataClient {
 
 const property = () => `properties/${process.env.GA_PROPERTY_ID}`;
 
-export const ALLOWED_DAYS = [7, 28, 90] as const;
+export const ALLOWED_DAYS = [1, 7, 28, 90] as const;
 export type RangeDays = (typeof ALLOWED_DAYS)[number] | "all";
 
 export function clampDays(days: number): RangeDays {
@@ -40,10 +40,8 @@ export function clampDays(days: number): RangeDays {
 const ALL_TIME_DAYS = 365;
 
 function getDateRange(daysInput: number | "all") {
-    if (daysInput === "all") {
-        return [{ startDate: `${ALL_TIME_DAYS}daysAgo`, endDate: "today" }];
-    }
-
+    if (daysInput === "all") return [{ startDate: `${ALL_TIME_DAYS}daysAgo`, endDate: "today" }];
+    if (daysInput === 1) return [{ startDate: "today", endDate: "today" }];
     const days = clampDays(daysInput);
     return [{ startDate: `${days}daysAgo`, endDate: "today" }];
 }
@@ -133,14 +131,14 @@ export async function getOverview(daysInput: number | "all"): Promise<Overview> 
         }
 
         const days = clampDays(daysInput) as number;
+        // two ranges: current period + the one before it, for deltas.
+        // GA adds a `dateRange` dimension tagging rows date_range_0/1.
+        const dateRanges = days === 1
+            ? [{ startDate: "today", endDate: "today" }, { startDate: "yesterday", endDate: "yesterday" }]
+            : [{ startDate: `${days}daysAgo`, endDate: "today" }, { startDate: `${2 * days}daysAgo`, endDate: `${days + 1}daysAgo` }];
         const [res] = await getClient().runReport({
             property: property(),
-            // two ranges: current period + the one before it, for deltas.
-            // GA adds a `dateRange` dimension tagging rows date_range_0/1.
-            dateRanges: [
-                { startDate: `${days}daysAgo`, endDate: "today" },
-                { startDate: `${2 * days}daysAgo`, endDate: `${days + 1}daysAgo` },
-            ],
+            dateRanges,
             metrics: [
                 { name: "activeUsers" },
                 { name: "sessions" },
@@ -193,12 +191,14 @@ export type Trend = { dates: string[]; activeUsers: number[]; pageViews: number[
 export async function getTrend(daysInput: number | "all"): Promise<Trend> {
     const cacheKey = daysInput === "all" ? "trend:all" : `trend:${clampDays(daysInput)}`;
     return cached(cacheKey, REPORT_TTL_MS, async () => {
+        const hourly = daysInput === 1;
+        const dimName = hourly ? "dateHour" : "date";
         const [res] = await getClient().runReport({
             property: property(),
             dateRanges: getDateRange(daysInput),
-            dimensions: [{ name: "date" }],
+            dimensions: [{ name: dimName }],
             metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
-            orderBys: [{ dimension: { dimensionName: "date" } }],
+            orderBys: [{ dimension: { dimensionName: dimName } }],
         });
 
         const rows = (res.rows ?? []) as GaRow[];
@@ -208,7 +208,12 @@ export async function getTrend(daysInput: number | "all"): Promise<Trend> {
 
         for (const row of rows) {
             const key = dim(row, 0);
-            dates.push(`${key.slice(0, 4)}-${key.slice(4, 6)}-${key.slice(6, 8)}`);
+            if (hourly) {
+                // dateHour format: YYYYMMDDHH → ISO datetime for ApexCharts
+                dates.push(`${key.slice(0, 4)}-${key.slice(4, 6)}-${key.slice(6, 8)}T${key.slice(8, 10)}:00:00`);
+            } else {
+                dates.push(`${key.slice(0, 4)}-${key.slice(4, 6)}-${key.slice(6, 8)}`);
+            }
             activeUsers.push(num(row, 0));
             pageViews.push(num(row, 1));
         }
@@ -424,16 +429,19 @@ export async function getCampaignsOverview(daysInput: number | "all"): Promise<C
         }
 
         const days = clampDays(daysInput) as number;
+        const [currentRange, previousRange] = days === 1
+            ? [{ startDate: "today", endDate: "today" }, { startDate: "yesterday", endDate: "yesterday" }]
+            : [{ startDate: `${days}daysAgo`, endDate: "today" }, { startDate: `${2 * days}daysAgo`, endDate: `${days + 1}daysAgo` }];
         const [[currentRes], [previousRes]] = await Promise.all([
             getClient().runReport({
                 property: property(),
-                dateRanges: [{ startDate: `${days}daysAgo`, endDate: "today" }],
+                dateRanges: [currentRange],
                 dimensions: [{ name: "sessionCampaignName" }],
                 metrics: CAMPAIGN_OVERVIEW_METRICS,
             }),
             getClient().runReport({
                 property: property(),
-                dateRanges: [{ startDate: `${2 * days}daysAgo`, endDate: `${days + 1}daysAgo` }],
+                dateRanges: [previousRange],
                 dimensions: [{ name: "sessionCampaignName" }],
                 metrics: CAMPAIGN_OVERVIEW_METRICS,
             }),
